@@ -1,0 +1,32 @@
+node {
+   def tomcatIp='172.31.31.17'
+   def tomcatUser = 'ec2-user'
+   def stopTomcat = "ssh ${tomcatUser}@${tomcatIp} /opt/tomcat8/bin/shutdown.sh"
+   def startTomcat = "ssh ${tomcatUser}@${tomcatIp} /opt/tomcat8/bin/startup.sh"
+   def copyWar = "scp -o StrictHostKeyChecking=no target/myweb.war ${tomcatUser}@${tomcatIp}:/opt/tomcat8/webapps/"
+  
+ stage('scm checkout'){
+     git credentialsId: 'github', 
+	     url: 'https://github.com/Chaitu9642/myweb'
+	
+	}
+ stage('maven build'){
+   
+   def mvnhome=tool name: 'maven3', type: 'maven'
+    def mvn="${mvnhome}/bin/mvn"
+    sh "${mvn} clean package"
+   
+
+ }
+ stage ('deploy dev'){
+     sh "mv target/myweb*.war target/myweb.war"
+	 
+ sshagent(['Tomcat-dev']) {
+            sh "${stopTomcat}"
+			sh "${copyWar}"
+			sh "${startTomcat}"
+  
+    }
+  
+  }
+}
