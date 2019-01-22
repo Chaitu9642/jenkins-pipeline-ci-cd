@@ -1,0 +1,39 @@
+node {
+   
+  
+ stage('scm checkout'){
+     git credentialsId: 'github', 
+	     url: 'https://github.com/Chaitu9642/myweb'
+	
+	}
+ stage('maven build'){
+   
+   def mvnhome=tool name: 'maven3', type: 'maven'
+    def mvn="${mvnhome}/bin/mvn"
+    sh "${mvn} clean package"
+	sh 'mv target/myweb*.war target/myweb.war'
+   
+
+ }
+ stage('build docker image'){
+        sh 'docker build -t chaitu9642/myweb:5.0.0 .'
+ }
+ stage ('push docker image'){
+    withCredentials([string(credentialsId: 'dockerhub', variable: 'password')]) {
+    sh "docker login -u chaitu9642 -p ${password}"
+   }
+   sh 'docker push chaitu9642/myweb:5.0.0'
+ 
+	 }
+ stage ('run container on dov server'){ 
+	def dockerrun='docker run -p  80:8080 -d --name myweb chaitu9642/myweb:5.0.0'
+	def dockerrm="ssh ec2-user@172.31.2.126 docker rm -f myweb
+	 
+	 sshagent(['dev-server']) {
+	 sh "${dockerrm}"
+    sh "ssh -o StrictHostKeyChecking=no ec2-user@172.31.2.126 ${dockerrun}"
+}
+  
+    }
+  
+  }
